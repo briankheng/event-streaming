@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Kafka configurations from environment variables
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:9092")
+REQUEST_TOPIC = os.getenv("REQUEST_TOPIC", "request-topic")
 RESPONSE_TOPIC = os.getenv("RESPONSE_TOPIC", "response-topic")
 GROUP_ID = os.getenv("GROUP_ID", "aggregate-hospital-group")
 
@@ -29,40 +30,44 @@ def create_topic(topic_name):
         logging.info(f"Topic {topic_name} already exists or error occurred: {e}")
 
 
-def consume_messages():
-    create_topic(RESPONSE_TOPIC)
-
-    consumer = KafkaConsumer(
-        RESPONSE_TOPIC,
-        bootstrap_servers=[KAFKA_BROKER],
-        group_id=GROUP_ID,
-        value_deserializer=lambda v: v.decode("utf-8"),
-        enable_auto_commit=True,
-        auto_offset_reset="earliest",
-    )
-
-    logging.info(f"Listening on topic: {RESPONSE_TOPIC}")
-
-    messages = []
-
-    message_pack = consumer.poll(timeout_ms=5000)
-    for tp, messages_pack in message_pack.items():
-        for message in messages_pack:
-            messages.append(json.loads(message.value))
-
-    consumer.commit()
-    consumer.close()
-
-    return messages
-
-
 @app.route("/api/hospital", methods=["GET"])
 def api_hospital():
     """
-    Endpoint to consume and return aggregated messages from Kafka.
+    Endpoint to get hospital data from Pine Valley Hospital and Grand Oak Hospital.
     """
     try:
-        messages = consume_messages()
+        create_topic(REQUEST_TOPIC)
+        create_topic(RESPONSE_TOPIC)
+
+        consumer = KafkaConsumer(
+            RESPONSE_TOPIC,
+            bootstrap_servers=[KAFKA_BROKER],
+            group_id=GROUP_ID,
+            value_deserializer=lambda v: v.decode("utf-8"),
+            enable_auto_commit=True,
+            auto_offset_reset="earliest",
+        )
+
+        producer = KafkaProducer(
+            bootstrap_servers=[KAFKA_BROKER],
+            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        )
+
+        logging.info(f"Listening on topic: {RESPONSE_TOPIC}")
+
+        producer.send(REQUEST_TOPIC, "Requesting hospital data")
+        logging.info(f"Published request to {REQUEST_TOPIC}")
+
+        messages = []
+
+        for message in consumer:
+            logging.info(f"Received message: {message.value}")
+            messages.append(json.loads(message.value))
+
+            if len(messages) == 2:
+                consumer.close()
+                break
+
         return jsonify({"hospitals": messages})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

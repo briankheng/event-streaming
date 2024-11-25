@@ -52,22 +52,11 @@ services:
     container_name: aggregate-hospital
     environment:
       KAFKA_BROKER: kafka:9092
+      REQUEST_TOPIC: request-topic
       RESPONSE_TOPIC: response-topic
       GROUP_ID: aggregate-hospital-group
     ports:
       - "5000:5000"
-    depends_on:
-      - kafka
-  
-  nginx:
-    container_name: nginx
-    build: 
-      context: ./nginx
-      dockerfile: Dockerfile
-    volumes:
-      - ./nginx/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
-    ports:
-      - "80:80"
     depends_on:
       - grand-oak-hospital
       - pine-valley-hospital

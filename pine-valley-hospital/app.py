@@ -56,6 +56,7 @@ def main():
             "hospital": "Pine Valley Hospital",
             "address": "456 Pine Valley Road, Rockford",
             "contact": "555-5678",
+            "timestamp": time.time(),
         }
 
         # Publish the result to response-topic

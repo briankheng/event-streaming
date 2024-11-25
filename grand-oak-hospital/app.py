@@ -56,6 +56,7 @@ def main():
             "hospital": "Grand Oak Hospital",
             "address": "123 Grand Oak Street, Springfield",
             "contact": "555-1234",
+            "timestamp": time.time(),
         }
 
         # Publish the result to response-topic
